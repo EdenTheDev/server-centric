@@ -85,6 +85,30 @@ Supporting guidance is available via the provided activities on REST services, p
 - Ensure orchestrator communicates exclusively in JSON and uses custom classes for serialization/deserialization.
 - Testing tools (curl, Postman, or text-based clients) may be used for verification.
 - Maintain both pre- and post-QoS-improvement code versions in Git for tutor review.
-- Keep your Olympus repository synced by verifying the current branch with `git status -sb` or `git branch` before pushing.
-- If `git push -u origin work` reports `src refspec work does not match any`, create or switch to the branch locally using `git checkout -b work` (or `git switch -c work`) and commit before pushing.
-- Confirm the remote is configured with `git remote -v`; add it via `git remote add origin <repository-url>` if missing.
+
+## Git Branch & Push Checklist
+1. **Check your branch and status**
+   ```bash
+   git status -sb
+   ```
+   If `work` is missing, create/switch to it:
+   ```bash
+   git switch -c work   # first time
+   git switch work      # subsequent checkouts
+   ```
+2. **Stage and commit your work** – a push will fail with `src refspec work does not match any` when the branch has no commits.
+   ```bash
+   git add .
+   git commit -m "Describe the change"
+   ```
+3. **Verify the remote** – ensure your Olympus or GitHub URL is configured.
+   ```bash
+   git remote -v
+   # If empty:
+   git remote add origin https://example.com/username/server-centric.git
+   ```
+4. **Push the branch**
+   ```bash
+   git push -u origin work
+   ```
+   After the upstream is set, subsequent pushes only need `git push`.
