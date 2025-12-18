@@ -1,59 +1,44 @@
-package cyclenest.resource;
+package cyclenest.repository;
 
 import cyclenest.model.RentalRequest;
-import cyclenest.repository.RequestRepository;
-import cyclenest.repository.ItemRepository;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Path("/requests")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
-public class RequestResource {
+/**
+ * Thread-safe in-memory repository for managing rental requests.
+ */
+public class RequestRepository {
 
-    private final RequestRepository requestRepo = new RequestRepository();
-    private final ItemRepository itemRepo = new ItemRepository();
+    // Thread-safe storage for requests
+    private static final Map<Integer, RentalRequest> requests = new ConcurrentHashMap<>();
 
-    // GET /requests
-    @GET
+    // Thread-safe request ID generation
+    private static final AtomicInteger requestIdGenerator = new AtomicInteger(0);
+
+    /**
+     * Retrieve all rental requests.
+     */
     public Collection<RentalRequest> getAllRequests() {
-        return requestRepo.getAllRequests();
+        return requests.values();
     }
 
-    // GET /requests/{id}
-    @GET
-    @Path("{id}")
-    public Response getRequestById(@PathParam("id") int id) {
-        RentalRequest request = requestRepo.getRequestById(id);
-
-        if (request == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("{\"error\":\"Request not found\"}")
-                    .build();
-        }
-
-        return Response.ok(request).build();
+    /**
+     * Retrieve a rental request by ID.
+     */
+    public RentalRequest getRequestById(int id) {
+        return requests.get(id);
     }
 
-    // POST /requests
-    @POST
-    public Response createRequest(RentalRequest request) {
-
-        if (itemRepo.getItemById(request.getItemId()) == null ||
-            !itemRepo.getItemById(request.getItemId()).isAvailable()) {
-
-            return Response.status(Response.Status.CONFLICT)
-                    .entity("{\"error\":\"Item not available\"}")
-                    .build();
-        }
-
-        RentalRequest created = requestRepo.addRequest(request);
-
-        return Response.status(Response.Status.CREATED)
-                .entity(created)
-                .build();
-    }
+    /**
+     * Create a new rental request.
+     */
+   public RentalRequest addRequest(RentalRequest request) {
+    request.setRequestId(requestIdGenerator.incrementAndGet());
+    request.setStatus("PENDING");
+    requests.put(request.getRequestId(), request);
+    return request;
 }
+   }
