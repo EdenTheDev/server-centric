@@ -1,11 +1,8 @@
 package osrm;
 
 import javax.ws.rs.ApplicationPath;
-import org.glassfish.jersey.server.ResourceConfig;
+import javax.ws.rs.core.Application;
 
-@ApplicationPath("/api")
-public class ApplicationConfig extends ResourceConfig {
-    public ApplicationConfig() {
-        packages("osrm");
-    }
+@ApplicationPath("/")
+public class ApplicationConfig extends Application {
 }

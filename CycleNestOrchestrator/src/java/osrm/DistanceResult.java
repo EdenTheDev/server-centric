@@ -1,6 +1,7 @@
 package osrm;
 
 public class DistanceResult {
+
     public double distance;
     public double duration;
 
