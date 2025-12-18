@@ -2,18 +2,19 @@ package cyclenest.repository;
 
 import cyclenest.model.Item;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * In-memory repository for managing cycle items.
- * This repository simulates persistence for Part A.
+ * Thread-safe in-memory repository for managing cycle rental items.
+ * Supports concurrent access and server-side ID generation.
  */
 public class ItemRepository {
 
-    private static final Map<Integer, Item> items = new HashMap<>();
+    private static final Map<Integer, Item> items = new ConcurrentHashMap<>();
+    private static final AtomicInteger idGenerator = new AtomicInteger(3);
 
-    // Static initial data (optional but useful for testing)
     static {
         items.put(1, new Item(1, "City Bike", "Urban", "Nottingham", true));
         items.put(2, new Item(2, "Mountain Bike", "Off-road", "Derby", true));
@@ -29,11 +30,15 @@ public class ItemRepository {
     }
 
     public Item addItem(Item item) {
+        if (item.getId() <= 0) {
+            item.setId(idGenerator.incrementAndGet());
+        }
         items.put(item.getId(), item);
         return item;
     }
 
     public Item updateItem(int id, Item updatedItem) {
+        updatedItem.setId(id);
         items.put(id, updatedItem);
         return updatedItem;
     }
