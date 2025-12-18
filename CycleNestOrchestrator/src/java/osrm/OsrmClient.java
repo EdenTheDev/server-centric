@@ -28,7 +28,8 @@ public class OsrmClient {
         
         // 1. Validation: Prevent unnecessary network calls
         if (!isValidCoordinate(lat1, lon1) || !isValidCoordinate(lat2, lon2)) {
-            throw new OsrmException("Invalid coordinates provided.");
+            // Throw with INVALID_COORDINATES type
+            throw new OsrmException("Invalid coordinates provided.", OsrmException.ErrorType.INVALID_COORDINATES);
         }
 
         String apiUrl = String.format("%s%f,%f;%f,%f?annotations=distance,duration", 
@@ -46,25 +47,28 @@ public class OsrmClient {
             
             HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
-            // 2. Comprehensive Status Code Handling
             int statusCode = response.statusCode();
             if (statusCode == 200) {
                 OsrmResponse osrm = mapper.readValue(response.body(), OsrmResponse.class);
                 return new DistanceResult(osrm.distances[0][1], osrm.durations[0][1]);
             } else if (statusCode >= 500) {
                 LOGGER.severe("OSRM Server Error: " + statusCode);
-                throw new OsrmException("OSRM service is currently unavailable.");
+                // Throw with SERVICE_UNAVAILABLE type
+                throw new OsrmException("OSRM service is currently unavailable.", OsrmException.ErrorType.SERVICE_UNAVAILABLE);
             } else {
                 LOGGER.warning("OSRM Client Error: " + statusCode + " Body: " + response.body());
-                throw new OsrmException("Failed to calculate distance: " + statusCode);
+                // Throw with UNEXPECTED_ERROR type for other status codes
+                throw new OsrmException("Failed to calculate distance: " + statusCode, OsrmException.ErrorType.UNEXPECTED_ERROR);
             }
 
+        } catch (OsrmException e) {
+            // Re-throw OsrmExceptions so they don't get wrapped in the general catch
+            throw e;
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Unexpected error during OSRM call", e);
-            throw new OsrmException("Internal system error in distance calculation", e);
-        }
-    }
-
+            // Throw with UNEXPECTED_ERROR type and include the cause
+            throw new OsrmException("Internal system error in distance calculation", OsrmException.ErrorType.UNEXPECTED_ERROR, e);
+        }       }
     private boolean isValidCoordinate(double lat, double lon) {
         return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
     }
