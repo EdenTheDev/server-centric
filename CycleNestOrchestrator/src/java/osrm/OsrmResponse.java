@@ -6,5 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class OsrmResponse {
     public double[][] distances;
     public double[][] durations;
-    public String code;
+
+    public OsrmResponse() {} // Required for Jackson
 }
