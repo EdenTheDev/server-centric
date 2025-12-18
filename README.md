@@ -30,7 +30,7 @@ The application is structured around clear service boundaries to ensure modulari
 * **Server**: Apache Tomcat 9
 * **Framework**: JAX-RS (Jersey)
 * **Data Handling**: Jackson (JSON serialization/deserialization)
-* **Tools**: Netbeans IDE, Postman, Git (Olympus repository)
+* **Tools**: Netbeans IDE, Postman, Git Bash
 
 ---
 
