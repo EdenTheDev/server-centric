@@ -16,9 +16,11 @@ public class ItemRepository {
     private static final AtomicInteger idGenerator = new AtomicInteger(3);
 
     static {
-        items.put(1, new Item(1, "City Bike", "Urban", "Nottingham", true));
-        items.put(2, new Item(2, "Mountain Bike", "Off-road", "Derby", true));
-        items.put(3, new Item(3, "Road Bike", "Sport", "Leicester", false));
+        // Updated to match the new 7-parameter constructor: 
+        // ID, Name, Type, Location, Availability, Latitude, Longitude
+        items.put(1, new Item(1, "City Bike", "Urban", "Nottingham", true, 52.9548, -1.1581));
+        items.put(2, new Item(2, "Mountain Bike", "Off-road", "Derby", true, 52.9225, -1.4746));
+        items.put(3, new Item(3, "Road Bike", "Sport", "Leicester", false, 52.6369, -1.1398));
     }
 
     public Collection<Item> getAllItems() {
