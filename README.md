@@ -16,7 +16,7 @@ The application is structured around clear service boundaries to ensure modulari
 
 ### **Part A – Internal Services**
 * **Cycle Rental Item Service**: Manages the inventory and details of available cycles.
-* **Rental Request Workflow Service**: Handles the logic and state for booking requests.
+* **Rental Request Workflow Service**: Handles the logic and  state for booking requests.
 
 ### **Part B – External Service Integration**
 * **OSRM Integration**: Real-world distance and duration calculation using the Open Source Routing Machine public API.
