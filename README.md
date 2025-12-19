@@ -101,8 +101,24 @@ To support high-quality service delivery and concurrent requests, the following 
 * **Thread-Safety**: Use of `ConcurrentHashMap` and `AtomicInteger` ensures data integrity during simultaneous requests.
 * **Resource Management**: Efficient reuse of the `HttpClient` for connection pooling to minimize latency.
 * **Error Resilience**: A custom exception hierarchy (`OsrmException`) maps internal failures to precise HTTP status codes, such as **400 (Bad Request)** and **502 (Bad Gateway)**.
+### **Objective**
+To critically evaluate the scalability of the Orchestrator under "Big Data" conditions[cite: 52]. The testing focuses on the integration between the internal Item Service (10,000 items) and the external OSRM Distance Service.
 
----
+### **Hypothesis & Expected Bottlenecks**
+The current architecture processes distance requests using a linear **O(N)** approach. For every user request:
+1.  The Orchestrator retrieves all 10,000 items.
+2.  It iterates through the list and calls the external OSRM API for **each item** to calculate travel duration.
+
+**Anticipated Issues:**
+* **High Latency:** Making 10,000 synchronous HTTP calls to an external service for a single user request is expected to result in response times exceeding acceptable limits (> 10s).
+* **API Throttling:** The external OSRM provider is expected to block or throttle requests (HTTP 429) due to the high volume of traffic.
+* **Scalability Failure:** Under concurrent load (simulated via JMeter), the thread pool is expected to exhaust, leading to service unavailability.
+
+### **Test Environment**
+* **Tool:** Apache JMeter[cite: 52].
+* [cite_start]**Dataset:** `cycle_nest_items_with_coordinates.json` (10,000 entries)[cite: 41].
+* **Metric Goals:** Latency < 500ms, Error Rate < 1%.
+
 
 ## **__Testing and Version Control__**
 * **Testing**: All endpoints have been verified using Postman. Evidence includes successful GET/POST cycles and correct JSON schema validation.
