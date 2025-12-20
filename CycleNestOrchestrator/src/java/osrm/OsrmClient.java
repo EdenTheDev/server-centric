@@ -15,7 +15,7 @@ public class OsrmClient {
     private static final Logger LOGGER = Logger.getLogger(OsrmClient.class.getName());
     
     // PART D TIP: Change this to "http://localhost:5000/table/v1/driving/" when using Docker
-    private static final String BASE_URL = "https://router.project-osrm.org/table/v1/driving/";
+    private static final String BASE_URL = "http://localhost:5000/table/v1/driving/";    
     
     // QoS: Reduced timeouts to 2 seconds to keep the Orchestrator responsive
     private static final HttpClient CLIENT = HttpClient.newBuilder()
