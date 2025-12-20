@@ -1,14 +1,14 @@
 package osrm;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpConnectTimeoutException; // Specific timeout handling
 import java.time.Duration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class OsrmClient {
 
@@ -25,7 +25,7 @@ public class OsrmClient {
     private final ObjectMapper mapper = new ObjectMapper();
 
     public DistanceResult calculateDistance(double lat1, double lon1, double lat2, double lon2) 
-            throws OsrmException {
+            throws OsrmException, OsrmServiceException {
         
         if (!isValidCoordinate(lat1, lon1) || !isValidCoordinate(lat2, lon2)) {
             throw new OsrmException("Invalid coordinates provided.", OsrmException.ErrorType.INVALID_COORDINATES);
@@ -50,29 +50,35 @@ public class OsrmClient {
             int statusCode = response.statusCode();
             
             // Handle Rate Limiting (Common with the public OSRM site)
+            // Handle Rate Limiting (Common with the public OSRM site)
             if (statusCode == 429) {
                 LOGGER.warning("OSRM Rate Limit Hit (429). Switch to Docker for Part D!");
-                throw new OsrmException("Rate limit exceeded.", OsrmException.ErrorType.SERVICE_UNAVAILABLE);
+                // CHANGED: Using your specific Service Exception
+                throw new OsrmServiceException("Rate limit exceeded on public API.");
             }
 
             if (statusCode == 200) {
                 OsrmResponse osrm = mapper.readValue(response.body(), OsrmResponse.class);
-                // Validation: check if OSRM returned null distances
                 if (osrm.distances == null || osrm.distances[0][1] == 0) {
-                    return new DistanceResult(0.0, 0.0); // Fallback for unreachable routes
+                    return new DistanceResult(0.0, 0.0);
                 }
                 return new DistanceResult(osrm.distances[0][1], osrm.durations[0][1]);
             } else {
-                throw new OsrmException("OSRM error: " + statusCode, OsrmException.ErrorType.SERVICE_UNAVAILABLE);
+                throw new OsrmServiceException("OSRM error: " + statusCode);
             }
 
         } catch (HttpConnectTimeoutException e) {
-            // SPEC REQUIREMENT: Robustness
             LOGGER.log(Level.WARNING, "OSRM Timeout! Orchestrator continuing with fallback data.");
-            throw new OsrmException("OSRM timed out - check internet or switch to Docker.", OsrmException.ErrorType.SERVICE_UNAVAILABLE, e);
+            // CHANGED: Using your specific Service Exception for consistency
+            throw new OsrmServiceException("OSRM timed out - check internet or switch to Docker.", e);
+        } catch (OsrmException e) {
+            // This catches both OsrmException AND OsrmServiceException
+            throw e; 
         } catch (Exception e) {
+            // This catches everything else (like Jackson parsing errors)
             LOGGER.log(Level.SEVERE, "Unexpected error during OSRM call", e);
-            throw new OsrmException("Internal system error in distance calculation", OsrmException.ErrorType.UNEXPECTED_ERROR, e);
+            throw new OsrmException("Internal system error in distance calculation", 
+                                    OsrmException.ErrorType.UNEXPECTED_ERROR, e);
         }
     }
 
