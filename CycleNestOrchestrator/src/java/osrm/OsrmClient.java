@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpConnectTimeoutException; // Specific timeout handling
 import java.time.Duration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,12 +14,12 @@ public class OsrmClient {
 
     private static final Logger LOGGER = Logger.getLogger(OsrmClient.class.getName());
     
-    // Move URL to a constant or config file for better maintainability
+    // PART D TIP: Change this to "http://localhost:5000/table/v1/driving/" when using Docker
     private static final String BASE_URL = "https://router.project-osrm.org/table/v1/driving/";
     
-    // Reuse HttpClient for connection pooling (QoS Improvement)
+    // QoS: Reduced timeouts to 2 seconds to keep the Orchestrator responsive
     private static final HttpClient CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
+            .connectTimeout(Duration.ofSeconds(2)) 
             .build();
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -26,18 +27,17 @@ public class OsrmClient {
     public DistanceResult calculateDistance(double lat1, double lon1, double lat2, double lon2) 
             throws OsrmException {
         
-        // 1. Validation: Prevent unnecessary network calls
         if (!isValidCoordinate(lat1, lon1) || !isValidCoordinate(lat2, lon2)) {
-            // Throw with INVALID_COORDINATES type
             throw new OsrmException("Invalid coordinates provided.", OsrmException.ErrorType.INVALID_COORDINATES);
         }
 
+        // Use %s to allow easy switching between Web and Docker URLs
         String apiUrl = String.format("%s%f,%f;%f,%f?annotations=distance,duration", 
                                       BASE_URL, lon1, lat1, lon2, lat2);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(apiUrl))
-                .timeout(Duration.ofSeconds(5))
+                .timeout(Duration.ofSeconds(3)) // Give it 3 seconds total to finish
                 .header("Accept", "application/json")
                 .GET()
                 .build();
@@ -48,27 +48,34 @@ public class OsrmClient {
             HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
             int statusCode = response.statusCode();
-            if (statusCode == 200) {
-                OsrmResponse osrm = mapper.readValue(response.body(), OsrmResponse.class);
-                return new DistanceResult(osrm.distances[0][1], osrm.durations[0][1]);
-            } else if (statusCode >= 500) {
-                LOGGER.severe("OSRM Server Error: " + statusCode);
-                // Throw with SERVICE_UNAVAILABLE type
-                throw new OsrmException("OSRM service is currently unavailable.", OsrmException.ErrorType.SERVICE_UNAVAILABLE);
-            } else {
-                LOGGER.warning("OSRM Client Error: " + statusCode + " Body: " + response.body());
-                // Throw with UNEXPECTED_ERROR type for other status codes
-                throw new OsrmException("Failed to calculate distance: " + statusCode, OsrmException.ErrorType.UNEXPECTED_ERROR);
+            
+            // Handle Rate Limiting (Common with the public OSRM site)
+            if (statusCode == 429) {
+                LOGGER.warning("OSRM Rate Limit Hit (429). Switch to Docker for Part D!");
+                throw new OsrmException("Rate limit exceeded.", OsrmException.ErrorType.SERVICE_UNAVAILABLE);
             }
 
-        } catch (OsrmException e) {
-            // Re-throw OsrmExceptions so they don't get wrapped in the general catch
-            throw e;
+            if (statusCode == 200) {
+                OsrmResponse osrm = mapper.readValue(response.body(), OsrmResponse.class);
+                // Validation: check if OSRM returned null distances
+                if (osrm.distances == null || osrm.distances[0][1] == 0) {
+                    return new DistanceResult(0.0, 0.0); // Fallback for unreachable routes
+                }
+                return new DistanceResult(osrm.distances[0][1], osrm.durations[0][1]);
+            } else {
+                throw new OsrmException("OSRM error: " + statusCode, OsrmException.ErrorType.SERVICE_UNAVAILABLE);
+            }
+
+        } catch (HttpConnectTimeoutException e) {
+            // SPEC REQUIREMENT: Robustness
+            LOGGER.log(Level.WARNING, "OSRM Timeout! Orchestrator continuing with fallback data.");
+            throw new OsrmException("OSRM timed out - check internet or switch to Docker.", OsrmException.ErrorType.SERVICE_UNAVAILABLE, e);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Unexpected error during OSRM call", e);
-            // Throw with UNEXPECTED_ERROR type and include the cause
             throw new OsrmException("Internal system error in distance calculation", OsrmException.ErrorType.UNEXPECTED_ERROR, e);
-        }       }
+        }
+    }
+
     private boolean isValidCoordinate(double lat, double lon) {
         return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
     }
