@@ -30,7 +30,7 @@ public class MongoSeeder {
             collection.drop();
 
             // 2. Load the file from the Maven resources folder
-            InputStream is = getClass().getClassLoader().getResourceAsStream("data/cycle_nest_items_with_coordinates.json");
+            InputStream is = getClass().getClassLoader().getResourceAsStream("data/items.json");
             
             if (is == null) {
                 System.out.println("Error: JSON file not found in src/main/resources/data/");
@@ -70,5 +70,9 @@ public class MongoSeeder {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    public static void main(String[] args) {
+        MongoSeeder seeder = new MongoSeeder();
+        seeder.seedData();
     }
 }

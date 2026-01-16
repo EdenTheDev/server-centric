@@ -1,44 +1,42 @@
 package cyclenest.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Item model updated to match the 9-attribute requirement in Section A.2.
- * Also keeps lat/lon for the OSRM distance calculations in Part B.
+ * Item model updated for MongoDB Atlas (String IDs) and OSRM calculations.
  */
-@JsonIgnoreProperties(ignoreUnknown = true) // Stops the app from crashing if the 10k JSON has extra fields
+@JsonIgnoreProperties(ignoreUnknown = true) 
 public class Item {
     
-    // Mandatory spec fields
-    private int id;
-    private int ownerId;        // Spec requirement
+    private String item_id; 
+    private String owner_id; 
     private String name;
-    private String category;    // Spec calls it Category (renamed from 'type')
+    private String category;
     private String location;    
-    private double dailyRate;   // Spec requirement
-    private boolean available;  // Spec requirement
-    private String condition;   // Spec requirement
-    private String description; // Spec requirement
+    private double daily_rate; 
+    private boolean available;  
+    private String condition;   
+    private String description; 
 
-    // Fields needed for Part B (Proximity/OSRM)
     private double latitude;
     private double longitude;
     private double roughDistance; 
 
+    // 1. MUST HAVE: Default constructor for Jackson
     public Item() {
-        // Default constructor for Jackson
     }
 
-    // Updated constructor with the new spec fields
-    public Item(int id, int ownerId, String name, String category, String location, 
-                double dailyRate, boolean available, String condition, 
+    // 2. Updated constructor
+    public Item(String item_id, String owner_id, String name, String category, String location, 
+                double daily_rate, boolean available, String condition, 
                 String description, double latitude, double longitude) {
-        this.id = id;
-        this.ownerId = ownerId;
+        this.item_id = item_id;
+        this.owner_id = owner_id;
         this.name = name;
         this.category = category;
         this.location = location;
-        this.dailyRate = dailyRate;
+        this.daily_rate = daily_rate;
         this.available = available;
         this.condition = condition;
         this.description = description;
@@ -46,12 +44,15 @@ public class Item {
         this.longitude = longitude;
     }
 
-    // Getters and Setters
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
+    // 3. GETTERS AND SETTERS (Fixed to match field names exactly)
 
-    public int getOwnerId() { return ownerId; }
-    public void setOwnerId(int ownerId) { this.ownerId = ownerId; }
+    @JsonProperty("item_id")
+    public String getItem_id() { return item_id; }
+    public void setItem_id(String item_id) { this.item_id = item_id; }
+
+    @JsonProperty("owner_id")
+    public String getOwner_id() { return owner_id; }
+    public void setOwner_id(String owner_id) { this.owner_id = owner_id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -62,8 +63,9 @@ public class Item {
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
 
-    public double getDailyRate() { return dailyRate; }
-    public void setDailyRate(double dailyRate) { this.dailyRate = dailyRate; }
+    @JsonProperty("daily_rate")
+    public double getDaily_rate() { return daily_rate; }
+    public void setDaily_rate(double daily_rate) { this.daily_rate = daily_rate; }
 
     public boolean isAvailable() { return available; }
     public void setAvailable(boolean available) { this.available = available; }

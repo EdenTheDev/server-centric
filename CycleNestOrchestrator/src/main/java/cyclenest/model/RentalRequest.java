@@ -1,19 +1,18 @@
 package cyclenest.model;
 
 public class RentalRequest {
-    // These constants are REQUIRED for the Resource to work
     public static final String STATUS_PENDING = "pending";
     public static final String STATUS_CANCELLED = "cancelled";
 
     private int requestId;
-    private int itemId;
+    private String itemId; // Changed from int to String
     private String startDate;
     private String endDate;
     private String status;
 
     public RentalRequest() {}
 
-    public RentalRequest(int requestId, int itemId, String startDate, String endDate, String status) {
+    public RentalRequest(int requestId, String itemId, String startDate, String endDate, String status) {
         this.requestId = requestId;
         this.itemId = itemId;
         this.startDate = startDate;
@@ -25,8 +24,8 @@ public class RentalRequest {
     public int getRequestId() { return requestId; }
     public void setRequestId(int requestId) { this.requestId = requestId; }
 
-    public int getItemId() { return itemId; }
-    public void setItemId(int itemId) { this.itemId = itemId; }
+    public String getItemId() { return itemId; } // Changed to String
+    public void setItemId(String itemId) { this.itemId = itemId; } // Changed to String
 
     public String getStartDate() { return startDate; }
     public void setStartDate(String startDate) { this.startDate = startDate; }
