@@ -1,4 +1,4 @@
-package osrm;
+package cyclenest.osrm;
 
 /**
  * Custom exception to satisfy Part B/C requirements for 

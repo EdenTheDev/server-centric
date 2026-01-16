@@ -1,4 +1,4 @@
-package osrm;
+package cyclenest.osrm;
 
 public class DistanceResult {
 

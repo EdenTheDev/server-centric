@@ -1,4 +1,4 @@
-package osrm;
+package cyclenest.osrm;
 
 /**
  * Enhanced Exception for OSRM operations.

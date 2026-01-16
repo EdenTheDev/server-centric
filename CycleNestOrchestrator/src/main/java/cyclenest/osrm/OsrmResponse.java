@@ -1,4 +1,4 @@
-package osrm;
+package cyclenest.osrm;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

@@ -1,4 +1,4 @@
-package osrm;
+package cyclenest.osrm;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;

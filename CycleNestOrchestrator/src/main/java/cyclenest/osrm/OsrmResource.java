@@ -1,4 +1,4 @@
-package osrm;
+package cyclenest.osrm;
 
 import cyclenest.model.Item;
 import cyclenest.repository.ItemRepository;
