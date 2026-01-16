@@ -20,7 +20,7 @@ public class OsrmResource {
 
     private static final Logger LOGGER = Logger.getLogger(OsrmResource.class.getName());
     private final OsrmClient client = new OsrmClient();
-    private final ItemRepository itemRepo = new ItemRepository(); // Injected Repository
+    private final ItemRepository itemRepo = new ItemRepository(); 
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -35,26 +35,31 @@ public class OsrmResource {
                     .build();
         }
 
-        try {
-            // 2. Load all 10,000 items from the Item Service (Repository)
-            List<Item> allItems = new ArrayList<>(itemRepo.getAllItems());
+       try {
+            // 2. Load a sample of items from Atlas
+            // FIXED: Added a 4th 'null' parameter for the 'location' filter
+            List<Item> allItems = itemRepo.searchItems(null, null, null, null);
+
+            if (allItems.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("{\"error\":\"No bikes found in database to calculate distance.\"}")
+                        .build();
+            }
 
             // 3. KNN FILTERING: Local math to prevent 429 Errors
-            // We calculate rough distance for all items WITHOUT calling the OSRM API
             for (Item item : allItems) {
                 double roughDist = DistanceHelper.calculateHaversine(
                     userLat, userLon, item.getLatitude(), item.getLongitude());
                 item.setRoughDistance(roughDist);
             }
-
+            
             // 4. SORT AND LIMIT: Keep only the 3 closest items locally
             List<Item> top3Bikes = allItems.stream()
                     .sorted(Comparator.comparingDouble(Item::getRoughDistance))
                     .limit(3)
                     .collect(Collectors.toList());
 
-            // 5. TARGETED ORCHESTRATION: Only call OSRM for the single absolute closest bike
-            // This ensures we stay within the "1 request per second" limit
+            // 5. TARGETED ORCHESTRATION: Only call OSRM for the absolute closest bike
             Item closestBike = top3Bikes.get(0);
             DistanceResult finalResult = client.calculateDistance(
                 userLat, userLon, closestBike.getLatitude(), closestBike.getLongitude());
