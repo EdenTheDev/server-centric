@@ -41,7 +41,6 @@ public class RequestResource {
     // POST /requests
     @POST
     public Response createRequest(RentalRequest request) {
-
         if (itemRepo.getItemById(request.getItemId()) == null ||
             !itemRepo.getItemById(request.getItemId()).isAvailable()) {
 
@@ -50,10 +49,35 @@ public class RequestResource {
                     .build();
         }
 
+        // The addRequest method in the Repo should set status to "pending" by default
         RentalRequest created = requestRepo.addRequest(request);
 
         return Response.status(Response.Status.CREATED)
                 .entity(created)
                 .build();
+    }
+
+    /**
+     * PUT /requests/{id}/cancel
+     * Mandatory Requirement A.1: Allow users to cancel a request.
+     */
+    @PUT
+    @Path("/{id}/cancel")
+    public Response cancelRequest(@PathParam("id") int id) {
+        RentalRequest request = requestRepo.getRequestById(id);
+
+        if (request == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("{\"error\":\"Request " + id + " does not exist\"}")
+                    .build();
+        }
+
+        // Update the status to cancelled
+        request.setStatus(RentalRequest.STATUS_CANCELLED);
+        
+        // Push the update back to the repository
+        requestRepo.updateRequest(id, request);
+
+        return Response.ok(request).build();
     }
 }
