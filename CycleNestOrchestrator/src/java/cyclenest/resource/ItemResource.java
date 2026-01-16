@@ -7,9 +7,12 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * REST resource for managing cycle rental items.
+ * REST resource for managing the Cycle Nest item marketplace.
+ * Updated to support Section A.1 requirements: Search and Filter.
  */
 @Path("/items")
 @Produces(MediaType.APPLICATION_JSON)
@@ -20,16 +23,32 @@ public class ItemResource {
 
     /**
      * GET /items
-     * Returns all available items.
+     * Supports filtering by category, availability, and daily rate.
+     * This ensures the Orchestrator can handle specific user queries 
+     * across the 10,000 item dataset.
      */
     @GET
-    public Collection<Item> getAllItems() {
-        return repository.getAllItems();
+    public Response getItems(
+            @QueryParam("category") String category,
+            @QueryParam("available") Boolean available,
+            @QueryParam("maxRate") Double maxRate) {
+        
+        // Fetching all items from repository (currently in-memory, will be Cosmos DB)
+        Collection<Item> items = repository.getAllItems();
+        
+        // Using Java Streams for filtering - helpful for the search requirement
+        List<Item> filteredResults = items.stream()
+            .filter(i -> category == null || i.getCategory().equalsIgnoreCase(category))
+            .filter(i -> available == null || i.isAvailable() == available)
+            .filter(i -> maxRate == null || i.getDailyRate() <= maxRate)
+            .collect(Collectors.toList());
+
+        return Response.ok(filteredResults).build();
     }
 
     /**
      * GET /items/{id}
-     * Returns a single item by ID.
+     * Returns a single item by ID for detailed view.
      */
     @GET
     @Path("/{id}")
@@ -47,7 +66,7 @@ public class ItemResource {
 
     /**
      * POST /items
-     * Adds a new item.
+     * Adds a new item to the marketplace.
      */
     @POST
     public Response addItem(Item item) {
@@ -65,7 +84,7 @@ public class ItemResource {
 
     /**
      * PUT /items/{id}
-     * Updates an existing item.
+     * Updates an existing item (e.g., changing availability or description).
      */
     @PUT
     @Path("/{id}")
@@ -83,7 +102,7 @@ public class ItemResource {
 
     /**
      * DELETE /items/{id}
-     * Removes an item.
+     * Admin/Owner functionality to remove an item.
      */
     @DELETE
     @Path("/{id}")
