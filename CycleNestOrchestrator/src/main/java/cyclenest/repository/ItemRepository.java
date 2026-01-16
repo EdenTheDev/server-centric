@@ -1,67 +1,124 @@
 package cyclenest.repository;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
 import cyclenest.model.Item;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import cyclenest.model.RentalRequest;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * Thread-safe in-memory repository for cycle items.
- * Currently using hardcoded toy data for Part A testing.
- */
 public class ItemRepository {
 
-    private static final Map<Integer, Item> items = new ConcurrentHashMap<>();
-    private static final AtomicInteger idGenerator = new AtomicInteger(3);
+    private static final String CONNECTION_STRING = "mongodb+srv://n1085361:CycleNest123@cyclenestcluster.9ibdwx0.mongodb.net/?appName=CycleNestCluster";
+    private static final String DATABASE_NAME = "CycleNestDB";
+    private static final String ITEM_COLLECTION = "items";
+    private static final String REQUEST_COLLECTION = "requests";
 
-    static {
-        // Updated to match the 11-parameter constructor:
-        // ID, OwnerID, Name, Category, Location, DailyRate, Availability, Condition, Description, Lat, Lon
+    private MongoDatabase getDatabase() {
+        MongoClient mongoClient = MongoClients.create(CONNECTION_STRING);
+        return mongoClient.getDatabase(DATABASE_NAME);
+    }
+
+    private MongoCollection<Document> getItemCollection() {
+        return getDatabase().getCollection(ITEM_COLLECTION);
+    }
+
+    private MongoCollection<Document> getRequestCollection() {
+        return getDatabase().getCollection(REQUEST_COLLECTION);
+    }
+
+    // A.1 Requirement: Search by at least one criterion (Category, Availability, Rate, and LOCATION)
+    public List<Item> searchItems(String category, Boolean available, Double maxRate, String location) {
+        List<Item> itemList = new ArrayList<>();
+        Document query = new Document();
         
-        items.put(1, new Item(
-            1, 101, "City Bike", "Urban", "Nottingham", 
-            12.50, true, "Good", "Standard bike for city commuting.", 
-            52.9548, -1.1581
-        ));
+        if (category != null && !category.isEmpty()) query.append("category", category);
+        if (available != null) query.append("available", available);
+        if (maxRate != null) query.append("daily_rate", new Document("$lte", maxRate));
+        if (location != null && !location.isEmpty()) query.append("location", location);
 
-        items.put(2, new Item(
-            2, 102, "Mountain Bike", "Off-road", "Derby", 
-            25.00, true, "New", "Tough bike for mountain trails.", 
-            52.9225, -1.4746
-        ));
-
-        items.put(3, new Item(
-            3, 101, "Road Bike", "Sport", "Leicester", 
-            20.00, false, "Fair", "Fast bike for long distance road cycling.", 
-            52.6369, -1.1398
-        ));
-    }
-
-    public Collection<Item> getAllItems() {
-        return items.values();
-    }
-
-    public Item getItemById(int id) {
-        return items.get(id);
-    }
-
-    public Item addItem(Item item) {
-        if (item.getId() <= 0) {
-            item.setId(idGenerator.incrementAndGet());
+        // Limit to 50 for performance as you did before
+        for (Document doc : getItemCollection().find(query).limit(50)) {
+            itemList.add(mapDocumentToItem(doc));
         }
-        items.put(item.getId(), item);
+        return itemList;
+    }
+
+    // A.1 Requirement: Request an item (Status: Pending)
+    public void saveRentalRequest(RentalRequest request) {
+        Document doc = new Document("requestId", request.getRequestId())
+                .append("itemId", request.getItemId())
+                .append("startDate", request.getStartDate())
+                .append("endDate", request.getEndDate())
+                .append("status", RentalRequest.STATUS_PENDING); // Force pending status
+        
+        getRequestCollection().insertOne(doc);
+    }
+
+    // A.1 Requirement: Cancel a request (Update status to Cancelled)
+    public boolean updateRequestStatus(String requestId, String newStatus) {
+        Bson filter = Filters.eq("requestId", Integer.parseInt(requestId));
+        Bson update = Updates.set("status", newStatus);
+        
+        return getRequestCollection().updateOne(filter, update).getModifiedCount() > 0;
+    }
+
+    // --- YOUR EXISTING METHODS ---
+
+    public List<Item> getAllItems() {
+        List<Item> itemList = new ArrayList<>();
+        for (Document doc : getItemCollection().find().limit(50)) {
+            itemList.add(mapDocumentToItem(doc));
+        }
+        return itemList;
+    }
+
+    public Item getItemById(String id) {
+        Document doc = getItemCollection().find(Filters.eq("item_id", id)).first();
+        return (doc != null) ? mapDocumentToItem(doc) : null;
+    }
+
+    public void addItem(Item item) {
+        Document doc = new Document("item_id", item.getItem_id())
+                .append("name", item.getName())
+                .append("category", item.getCategory())
+                .append("daily_rate", item.getDaily_rate())
+                .append("available", item.isAvailable());
+        getItemCollection().insertOne(doc);
+    }
+
+    private Item mapDocumentToItem(Document doc) {
+        return new Item(
+            doc.getString("item_id"),
+            doc.getString("owner_id"),
+            doc.getString("name"),
+            doc.getString("category"),
+            doc.getString("location"),
+            doc.get("daily_rate") instanceof Number ? ((Number) doc.get("daily_rate")).doubleValue() : 0.0,
+            doc.getBoolean("available") != null ? doc.getBoolean("available") : false,
+            doc.getString("condition"),
+            doc.getString("description"),
+            doc.get("latitude") instanceof Number ? ((Number) doc.get("latitude")).doubleValue() : 0.0,
+            doc.get("longitude") instanceof Number ? ((Number) doc.get("longitude")).doubleValue() : 0.0
+        );
+    }
+
+    public void updateItem(String id, Item item) {
+        Document updateData = new Document("name", item.getName())
+                .append("category", item.getCategory())
+                .append("daily_rate", item.getDaily_rate());
+        getItemCollection().updateOne(Filters.eq("item_id", id), new Document("$set", updateData));
+    }
+
+    public Item removeItem(String id) {
+        Item item = getItemById(id);
+        if (item != null) getItemCollection().deleteOne(Filters.eq("item_id", id));
         return item;
-    }
-
-    // This stays the same for now, but will eventually need to update the Cloud DB
-    public Item updateItem(int id, Item updatedItem) {
-        updatedItem.setId(id);
-        items.put(id, updatedItem);
-        return updatedItem;
-    }
-
-    public Item removeItem(int id) {
-        return items.remove(id);
     }
 }
