@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CycleNest Dev Portal</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        h1 { color: #1a73e8; margin-top: 0; }
+        .status-badge { background: #34a853; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; vertical-align: middle; }
+        .endpoint { font-family: 'Consolas', monospace; color: #d93025; background: #f8f9fa; padding: 2px 5px; }
+        .method { font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; }
+        .get { background: #e8f0fe; color: #1967d2; }
+        .post { background: #e6f4ea; color: #137333; }
+        .put { background: #fef7e0; color: #b06000; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 15px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; }
+        .btn-test { text-decoration: none; color: white; background: #1a73e8; padding: 6px 12px; border-radius: 4px; font-size: 0.9em; }
+        .btn-test:hover { background: #1557b0; }
+        .req-tag { font-size: 0.75em; color: #70757a; font-weight: bold; display: block; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>CycleNest Orchestrator <span class="status-badge">Online</span></h1>
+        <p>This dashboard serves as the <strong>Proof of Implementation</strong> for Project Parts A & B.</p>
+        <a href="api/status" class="btn-test" style="background: #5f6368;">System Health Check</a>
+    </div>
+
+    <div class="card">
+        <h2>Orchestrator Endpoints (Part A.1 & A.2)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Requirement</th>
+                    <th>Method</th>
+                    <th>Endpoint & Test Links</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="req-tag">A.1: View Items</span>Fetch Large Dataset</td>
+                    <td><span class="method get">GET</span></td>
+                    <td>
+                        <span class="endpoint">/api/items/search</span><br><br>
+                        <a href="api/items/search" target="_blank" class="btn-test">View First 50 Items</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="req-tag">A.1: Filtering</span>Filter: Location</td>
+                    <td><span class="method get">GET</span></td>
+                    <td>
+                        <span class="endpoint">/api/items/search?location=Sheffield</span><br><br>
+                        <a href="api/items/search?location=Sheffield" target="_blank" class="btn-test">Items in Sheffield</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="req-tag">A.1: Filtering</span>Filter: Daily Rate</td>
+                    <td><span class="method get">GET</span></td>
+                    <td>
+                        <span class="endpoint">/api/items/search?maxRate=20</span><br><br>
+                        <a href="api/items/search?maxRate=20" target="_blank" class="btn-test">Items Under &pound;20</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="req-tag">Extra: Orchestration</span>OSRM Calculation</td>
+                    <td><span class="method get">GET</span></td>
+                    <td>
+                        <span class="endpoint">/api/distance</span><br><br>
+                        <a href="api/distance?lat=53.38&lon=-1.47" target="_blank" class="btn-test">Test OSRM Routing</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="req-tag">A.1: State Management</span>Request Item (Pending)</td>
+                    <td><span class="method post">POST</span></td>
+                    <td>
+                        <span class="endpoint">/api/items/request</span><br>
+                        <small>Creates "pending" status in MongoDB.</small>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="req-tag">A.1: State Management</span>Cancel Request</td>
+                    <td><span class="method put">PUT</span></td>
+                    <td>
+                        <span class="endpoint">/api/items/cancel/{id}</span><br>
+                        <small>Updates status to "cancelled".</small>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card" style="background: #e8f0fe;">
+        <h3>Part A.2 Cloud Storage Verification</h3>
+        <p>All data is persisted in <strong>MongoDB Atlas</strong>. Ensure your database collection matches the fields:</p>
+        <code>Item ID, Owner ID, Name, Category, Location, Daily Rate, Availability, Condition, Description.</code>
+    </div>
+
+</body>
+</html>
