@@ -7,8 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Thread-safe in-memory repository for managing cycle rental items.
- * Supports concurrent access and server-side ID generation.
+ * Thread-safe in-memory repository for cycle items.
+ * Currently using hardcoded toy data for Part A testing.
  */
 public class ItemRepository {
 
@@ -16,11 +16,26 @@ public class ItemRepository {
     private static final AtomicInteger idGenerator = new AtomicInteger(3);
 
     static {
-        // Updated to match the new 7-parameter constructor: 
-        // ID, Name, Type, Location, Availability, Latitude, Longitude
-        items.put(1, new Item(1, "City Bike", "Urban", "Nottingham", true, 52.9548, -1.1581));
-        items.put(2, new Item(2, "Mountain Bike", "Off-road", "Derby", true, 52.9225, -1.4746));
-        items.put(3, new Item(3, "Road Bike", "Sport", "Leicester", false, 52.6369, -1.1398));
+        // Updated to match the 11-parameter constructor:
+        // ID, OwnerID, Name, Category, Location, DailyRate, Availability, Condition, Description, Lat, Lon
+        
+        items.put(1, new Item(
+            1, 101, "City Bike", "Urban", "Nottingham", 
+            12.50, true, "Good", "Standard bike for city commuting.", 
+            52.9548, -1.1581
+        ));
+
+        items.put(2, new Item(
+            2, 102, "Mountain Bike", "Off-road", "Derby", 
+            25.00, true, "New", "Tough bike for mountain trails.", 
+            52.9225, -1.4746
+        ));
+
+        items.put(3, new Item(
+            3, 101, "Road Bike", "Sport", "Leicester", 
+            20.00, false, "Fair", "Fast bike for long distance road cycling.", 
+            52.6369, -1.1398
+        ));
     }
 
     public Collection<Item> getAllItems() {
@@ -39,6 +54,7 @@ public class ItemRepository {
         return item;
     }
 
+    // This stays the same for now, but will eventually need to update the Cloud DB
     public Item updateItem(int id, Item updatedItem) {
         updatedItem.setId(id);
         items.put(id, updatedItem);
