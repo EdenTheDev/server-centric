@@ -17,64 +17,74 @@ public class ItemRepository {
 
     private static final String CONNECTION_STRING = "mongodb+srv://n1085361:CycleNest123@cyclenestcluster.9ibdwx0.mongodb.net/?appName=CycleNestCluster";
     private static final String DATABASE_NAME = "CycleNestDB";
-    
-    // PART C FIX: Static client creates ONE connection pool for the whole app
-    private static final MongoClient mongoClient = MongoClients.create(CONNECTION_STRING);
-    private final MongoDatabase database;
+    private static final String ITEM_COLLECTION = "items";
+    private static final String REQUEST_COLLECTION = "requests";
+
+    // SINGLETON FIX: One client, shared by all requests
+    private static MongoClient mongoClient = null;
+    private static MongoDatabase database = null;
 
     public ItemRepository() {
-        this.database = mongoClient.getDatabase(DATABASE_NAME);
+        synchronized (ItemRepository.class) {
+            if (mongoClient == null) {
+                mongoClient = MongoClients.create(CONNECTION_STRING);
+                database = mongoClient.getDatabase(DATABASE_NAME);
+            }
+        }
     }
 
     private MongoCollection<Document> getItemCollection() {
-        return database.getCollection("items");
+        return database.getCollection(ITEM_COLLECTION);
     }
 
     private MongoCollection<Document> getRequestCollection() {
-        return database.getCollection("requests");
+        return database.getCollection(REQUEST_COLLECTION);
     }
 
-    // A.1 Requirement: Universal Search
+    /**
+     * OPTIMIZED SEARCH: Added Page and PageSize for Pagination (Part C)
+     */
     public List<Item> searchItems(String itemId, String ownerId, String name, String category, 
-                                   Boolean available, Double maxRate, String location, String condition) {
+                                  Boolean available, Double maxRate, String location, String condition,
+                                  int page, int pageSize) {
         List<Item> itemList = new ArrayList<>();
         Document query = new Document();
         
         if (itemId != null && !itemId.isEmpty()) query.append("item_id", itemId);
         if (ownerId != null && !ownerId.isEmpty()) query.append("owner_id", ownerId);
         if (available != null) query.append("available", available);
-        if (name != null && !name.isEmpty()) query.append("name", new Document("$regex", "(?i)" + name));
-        if (category != null && !category.isEmpty()) query.append("category", new Document("$regex", "(?i)" + category));
-        if (location != null && !location.isEmpty()) query.append("location", new Document("$regex", "(?i)" + location));
-        if (condition != null && !condition.isEmpty()) query.append("condition", new Document("$regex", "(?i)" + condition));
+        
+        if (name != null && !name.isEmpty()) 
+            query.append("name", new Document("$regex", "(?i)" + name));
+        if (category != null && !category.isEmpty()) 
+            query.append("category", new Document("$regex", "(?i)" + category));
+        if (location != null && !location.isEmpty()) 
+            query.append("location", new Document("$regex", "(?i)" + location));
+        if (condition != null && !condition.isEmpty()) 
+            query.append("condition", new Document("$regex", "(?i)" + condition));
+            
         if (maxRate != null) query.append("daily_rate", new Document("$lte", maxRate));
 
-        for (Document doc : getItemCollection().find(query).limit(50)) {
+        // PAGINATION EXECUTION: skip() and limit()
+        int skipValue = (page - 1) * pageSize;
+
+        for (Document doc : getItemCollection().find(query)
+                                               .skip(skipValue)
+                                               .limit(pageSize)) {
             itemList.add(mapDocumentToItem(doc));
         }
         return itemList;
     }
 
-    // A.1 Requirement: Request an item
-    public void saveRentalRequest(RentalRequest request) {
-        Document doc = new Document("requestId", request.getRequestId())
-                .append("itemId", request.getItemId())
-                .append("startDate", request.getStartDate())
-                .append("endDate", request.getEndDate())
-                .append("status", RentalRequest.STATUS_PENDING); 
-        
-        getRequestCollection().insertOne(doc);
-    }
-
-    // A.1 Requirement: Cancel a request
-    public boolean updateRequestStatus(String requestId, String newStatus) {
-        Bson filter = Filters.eq("requestId", Integer.parseInt(requestId));
-        Bson update = Updates.set("status", newStatus);
-        return getRequestCollection().updateOne(filter, update).getModifiedCount() > 0;
+    // Overloaded method to maintain compatibility with existing code if needed
+    public List<Item> searchItems(String itemId, String ownerId, String name, String category, 
+                                  Boolean available, Double maxRate, String location, String condition) {
+        return searchItems(itemId, ownerId, name, category, available, maxRate, location, condition, 1, 50);
     }
 
     public List<Item> getAllItems() {
         List<Item> itemList = new ArrayList<>();
+        // Default to first 50 items
         for (Document doc : getItemCollection().find().limit(50)) {
             itemList.add(mapDocumentToItem(doc));
         }
@@ -86,20 +96,35 @@ public class ItemRepository {
         return (doc != null) ? mapDocumentToItem(doc) : null;
     }
 
+    public void saveRentalRequest(RentalRequest request) {
+        Document doc = new Document("requestId", request.getRequestId())
+                .append("itemId", request.getItemId())
+                .append("startDate", request.getStartDate())
+                .append("endDate", request.getEndDate())
+                .append("status", RentalRequest.STATUS_PENDING); 
+        
+        getRequestCollection().insertOne(doc);
+    }
+
+    public boolean updateRequestStatus(String requestId, String newStatus) {
+        try {
+            Bson filter = Filters.eq("requestId", Integer.parseInt(requestId));
+            Bson update = Updates.set("status", newStatus);
+            return getRequestCollection().updateOne(filter, update).getModifiedCount() > 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     public void addItem(Item item) {
         Document doc = new Document("item_id", item.getItem_id())
                 .append("name", item.getName())
                 .append("category", item.getCategory())
                 .append("daily_rate", item.getDaily_rate())
-                .append("available", item.isAvailable());
+                .append("available", item.isAvailable())
+                .append("latitude", item.getLatitude())
+                .append("longitude", item.getLongitude());
         getItemCollection().insertOne(doc);
-    }
-
-    public void updateItem(String id, Item item) {
-        Document updateData = new Document("name", item.getName())
-                .append("category", item.getCategory())
-                .append("daily_rate", item.getDaily_rate());
-        getItemCollection().updateOne(Filters.eq("item_id", id), new Document("$set", updateData));
     }
 
     public Item removeItem(String id) {
