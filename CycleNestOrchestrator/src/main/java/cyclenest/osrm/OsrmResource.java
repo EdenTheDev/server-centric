@@ -9,7 +9,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.logging.Logger;
@@ -36,12 +35,11 @@ public class OsrmResource {
         }
 
        try {
-            // 2. Load a sample of items from Atlas
-            // FIXED: Added 8 'null' parameters to match the new ItemRepository search signature
-            // (itemId, ownerId, name, category, available, maxRate, location, condition)
-            List<Item> allItems = itemRepo.searchItems(null, null, null, null, null, null, null, null);
+            // 2. Load a paginated sample from Atlas (Optimized for Part C)
+            // Added 1 (page) and 10 (pageSize) to match new ItemRepository signature
+            List<Item> allItems = itemRepo.searchItems(null, null, null, null, null, null, null, null, 1, 10);
 
-            if (allItems.isEmpty()) {
+            if (allItems == null || allItems.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity("{\"error\":\"No bikes found in database to calculate distance.\"}")
                         .build();
@@ -70,13 +68,28 @@ public class OsrmResource {
         } catch (OsrmException e) {
             LOGGER.warning("OSRM Service issue: " + e.getMessage());
             return Response.status(Response.Status.BAD_GATEWAY)
-                    .entity("{\"error\":\"External routing service failed (Rate Limit?)\"}")
+                    .entity("{\"error\":\"External routing service failed (Rate Limit or Timeout)\"}")
                     .build();
         } catch (Exception e) {
             LOGGER.severe("Unexpected Orchestrator error: " + e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("{\"error\":\"Internal error during orchestration\"}")
                     .build();
+        }
+    }
+
+    @GET
+    @Path("/direct")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getDirectDistance(
+            @QueryParam("lat1") Double lat1, @QueryParam("lon1") Double lon1,
+            @QueryParam("lat2") Double lat2, @QueryParam("lon2") Double lon2) {
+        try {
+            // This bypasses the Repository/Database entirely for clean OSRM testing
+            DistanceResult result = client.calculateDistance(lat1, lon1, lat2, lon2);
+            return Response.ok(result).build();
+        } catch (Exception e) {
+            return Response.status(500).entity(e.getMessage()).build();
         }
     }
 }
