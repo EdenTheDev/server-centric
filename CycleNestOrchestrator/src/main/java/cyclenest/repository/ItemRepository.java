@@ -17,59 +17,61 @@ public class ItemRepository {
 
     private static final String CONNECTION_STRING = "mongodb+srv://n1085361:CycleNest123@cyclenestcluster.9ibdwx0.mongodb.net/?appName=CycleNestCluster";
     private static final String DATABASE_NAME = "CycleNestDB";
-    private static final String ITEM_COLLECTION = "items";
-    private static final String REQUEST_COLLECTION = "requests";
+    
+    // PART C FIX: Static client creates ONE connection pool for the whole app
+    private static final MongoClient mongoClient = MongoClients.create(CONNECTION_STRING);
+    private final MongoDatabase database;
 
-    private MongoDatabase getDatabase() {
-        MongoClient mongoClient = MongoClients.create(CONNECTION_STRING);
-        return mongoClient.getDatabase(DATABASE_NAME);
+    public ItemRepository() {
+        this.database = mongoClient.getDatabase(DATABASE_NAME);
     }
 
     private MongoCollection<Document> getItemCollection() {
-        return getDatabase().getCollection(ITEM_COLLECTION);
+        return database.getCollection("items");
     }
 
     private MongoCollection<Document> getRequestCollection() {
-        return getDatabase().getCollection(REQUEST_COLLECTION);
+        return database.getCollection("requests");
     }
 
-    // A.1 Requirement: Search by at least one criterion (Category, Availability, Rate, and LOCATION)
-    public List<Item> searchItems(String category, Boolean available, Double maxRate, String location) {
+    // A.1 Requirement: Universal Search
+    public List<Item> searchItems(String itemId, String ownerId, String name, String category, 
+                                   Boolean available, Double maxRate, String location, String condition) {
         List<Item> itemList = new ArrayList<>();
         Document query = new Document();
         
-        if (category != null && !category.isEmpty()) query.append("category", category);
+        if (itemId != null && !itemId.isEmpty()) query.append("item_id", itemId);
+        if (ownerId != null && !ownerId.isEmpty()) query.append("owner_id", ownerId);
         if (available != null) query.append("available", available);
+        if (name != null && !name.isEmpty()) query.append("name", new Document("$regex", "(?i)" + name));
+        if (category != null && !category.isEmpty()) query.append("category", new Document("$regex", "(?i)" + category));
+        if (location != null && !location.isEmpty()) query.append("location", new Document("$regex", "(?i)" + location));
+        if (condition != null && !condition.isEmpty()) query.append("condition", new Document("$regex", "(?i)" + condition));
         if (maxRate != null) query.append("daily_rate", new Document("$lte", maxRate));
-        if (location != null && !location.isEmpty()) query.append("location", location);
 
-        // Limit to 50 for performance as you did before
         for (Document doc : getItemCollection().find(query).limit(50)) {
             itemList.add(mapDocumentToItem(doc));
         }
         return itemList;
     }
 
-    // A.1 Requirement: Request an item (Status: Pending)
+    // A.1 Requirement: Request an item
     public void saveRentalRequest(RentalRequest request) {
         Document doc = new Document("requestId", request.getRequestId())
                 .append("itemId", request.getItemId())
                 .append("startDate", request.getStartDate())
                 .append("endDate", request.getEndDate())
-                .append("status", RentalRequest.STATUS_PENDING); // Force pending status
+                .append("status", RentalRequest.STATUS_PENDING); 
         
         getRequestCollection().insertOne(doc);
     }
 
-    // A.1 Requirement: Cancel a request (Update status to Cancelled)
+    // A.1 Requirement: Cancel a request
     public boolean updateRequestStatus(String requestId, String newStatus) {
         Bson filter = Filters.eq("requestId", Integer.parseInt(requestId));
         Bson update = Updates.set("status", newStatus);
-        
         return getRequestCollection().updateOne(filter, update).getModifiedCount() > 0;
     }
-
-    // --- YOUR EXISTING METHODS ---
 
     public List<Item> getAllItems() {
         List<Item> itemList = new ArrayList<>();
@@ -93,6 +95,21 @@ public class ItemRepository {
         getItemCollection().insertOne(doc);
     }
 
+    public void updateItem(String id, Item item) {
+        Document updateData = new Document("name", item.getName())
+                .append("category", item.getCategory())
+                .append("daily_rate", item.getDaily_rate());
+        getItemCollection().updateOne(Filters.eq("item_id", id), new Document("$set", updateData));
+    }
+
+    public Item removeItem(String id) {
+        Item item = getItemById(id);
+        if (item != null) {
+            getItemCollection().deleteOne(Filters.eq("item_id", id));
+        }
+        return item;
+    }
+
     private Item mapDocumentToItem(Document doc) {
         return new Item(
             doc.getString("item_id"),
@@ -107,18 +124,5 @@ public class ItemRepository {
             doc.get("latitude") instanceof Number ? ((Number) doc.get("latitude")).doubleValue() : 0.0,
             doc.get("longitude") instanceof Number ? ((Number) doc.get("longitude")).doubleValue() : 0.0
         );
-    }
-
-    public void updateItem(String id, Item item) {
-        Document updateData = new Document("name", item.getName())
-                .append("category", item.getCategory())
-                .append("daily_rate", item.getDaily_rate());
-        getItemCollection().updateOne(Filters.eq("item_id", id), new Document("$set", updateData));
-    }
-
-    public Item removeItem(String id) {
-        Item item = getItemById(id);
-        if (item != null) getItemCollection().deleteOne(Filters.eq("item_id", id));
-        return item;
     }
 }
