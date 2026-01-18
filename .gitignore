@@ -1,29 +1,41 @@
-# Compiled class file
+# --- Java & Maven ---
+# Compiled class files
 *.class
+# Maven build directory (CRITICAL: Ignore all compiled artifacts)
+target/
+CycleNestOrchestrator/target/
 
-# Build artifacts
+# --- Build Artifacts ---
 /build/
 /dist/
 CycleNestOrchestrator/build/
 CycleNestOrchestrator/dist/
-
-# Logs / OS
-*.log
-.DS_Store
-Thumbs.db
-
-# IDE files
-/.classpath
-/.project
-/.settings/
-/.vscode/
-/.idea/
-/*.iml
-CycleNestOrchestrator/nbproject/private/
-
-# Archives
 *.war
 *.ear
 *.zip
 *.tar.gz
 *.rar
+
+# --- IDEs & Editors ---
+# NetBeans
+nbproject/private/
+/nbproject/
+# VS Code / IntelliJ / Eclipse
+.vscode/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# --- Local Backups & Junk ---
+# Ignore the backup folder sitting outside the project
+../CycleNestOld/
+# OS generated files
+.DS_Store
+Thumbs.db
+*.log
+
+# --- Deployment ---
+# If you have local server configs, ignore them
+.mavenrc
