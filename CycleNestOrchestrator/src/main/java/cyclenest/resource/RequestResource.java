@@ -37,7 +37,6 @@ public class RequestResource {
 
     @POST
     public Response createRequest(RentalRequest request) {
-        // request.getItemId() should now return a String (e.g., "i00001")
         Item targetItem = itemRepo.getItemById(request.getItemId());
 
         if (targetItem == null || !targetItem.isAvailable()) {
@@ -45,6 +44,9 @@ public class RequestResource {
                     .entity("{\"error\":\"Item not available or not found\"}")
                     .build();
         }
+
+        // Force status to "pending" on creation
+        request.setStatus("pending");
 
         RentalRequest created = requestRepo.addRequest(request);
         return Response.status(Response.Status.CREATED).entity(created).build();

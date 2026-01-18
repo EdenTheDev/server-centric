@@ -44,7 +44,7 @@ public class ItemResource {
             return Response.status(Response.Status.BAD_REQUEST).entity("Invalid Request Data").build();
         }
         
-        // Business Logic: Status must be "pending" initially
+        //Status must be "pending" initially
         request.setStatus("pending");
         
         repository.saveRentalRequest(request); 
@@ -63,8 +63,6 @@ public class ItemResource {
         }
         return Response.ok("{\"message\":\"Request cancelled successfully\"}").build();
     }
-
-    // --- YOUR EXISTING CRUD METHODS ---
 
     @GET
     public Response getItems() {
