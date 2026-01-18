@@ -37,8 +37,9 @@ public class OsrmResource {
 
        try {
             // 2. Load a sample of items from Atlas
-            // FIXED: Added a 4th 'null' parameter for the 'location' filter
-            List<Item> allItems = itemRepo.searchItems(null, null, null, null);
+            // FIXED: Added 8 'null' parameters to match the new ItemRepository search signature
+            // (itemId, ownerId, name, category, available, maxRate, location, condition)
+            List<Item> allItems = itemRepo.searchItems(null, null, null, null, null, null, null, null);
 
             if (allItems.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)

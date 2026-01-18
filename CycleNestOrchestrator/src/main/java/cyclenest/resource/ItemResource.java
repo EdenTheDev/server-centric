@@ -16,20 +16,25 @@ public class ItemResource {
 
     private final ItemRepository repository = new ItemRepository();
 
-    // GET /api/items/search -> Supports Category, Availability, MaxRate, and Location
     @GET
     @Path("/search")
     public Response searchItems(
+            @QueryParam("item_id") String itemId,
+            @QueryParam("owner_id") String ownerId,
+            @QueryParam("name") String name,
             @QueryParam("category") String category,
             @QueryParam("available") Boolean available,
             @QueryParam("maxRate") Double maxRate,
-            @QueryParam("location") String location) {
+            @QueryParam("location") String location,
+            @QueryParam("condition") String condition) {
         
-        // Ensure your repository.searchItems can handle 'location' now
-        List<Item> filteredResults = repository.searchItems(category, available, maxRate, location);
+        // Passing all possible filters to the repository
+        List<Item> filteredResults = repository.searchItems(
+            itemId, ownerId, name, category, available, maxRate, location, condition
+        );
+        
         return Response.ok(filteredResults).build();
     }
-
     // Requirement: Request an item (Creates a "pending" request)
     // POST /api/items/request
     @POST
