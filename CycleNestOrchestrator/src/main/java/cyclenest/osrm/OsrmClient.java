@@ -1,87 +1,81 @@
 package cyclenest.osrm;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Locale;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+/**
+ * OsrmClient - Handles the HTTP communication with our OSRM Docker container.
+ * This satisfies the Part B requirement: Consuming a Remote Web Service.
+ */
 public class OsrmClient {
 
-    private static final Logger LOGGER = Logger.getLogger(OsrmClient.class.getName());
-    
-    // host.docker.internal allows the container to talk to the OSRM instance on the host machine
-    private static final String BASE_URL = "http://host.docker.internal:5000/route/v1/driving/";
-    
-    // Using a static client to reuse connections and improve performance
-    private static final HttpClient CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(2)) // Fail fast if the service is down
-            .build();
+    // Internal Docker network URL (service name 'osrm' defined in docker-compose)
+    private static final String OSRM_URL = "http://osrm:5000/route/v1/driving/";
 
-    private final ObjectMapper mapper = new ObjectMapper();
-
-    public DistanceResult calculateDistance(double lat1, double lon1, double lat2, double lon2) 
-            throws OsrmException, OsrmServiceException {
+    /**
+     * getRoute - Fetches distance and duration data from the routing engine.
+     */
+    public DistanceResult getRoute(double userLat, double userLon, double itemLat, double itemLon) 
+            throws OsrmException, OsrmServiceException { 
         
-        // Basic validation to prevent unnecessary API calls
-        if (!isValidCoordinate(lat1, lon1) || !isValidCoordinate(lat2, lon2)) {
-            throw new OsrmException("Invalid coordinates.", OsrmException.ErrorType.INVALID_COORDINATES);
-        }
-
-        // OSRM requires Lon,Lat order. We format the URL for a standard route request.
-        String apiUrl = String.format("%s%f,%f;%f,%f?overview=false", 
-                                     BASE_URL, lon1, lat1, lon2, lat2);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl))
-                .timeout(Duration.ofSeconds(3)) // Global timeout for the request
-                .header("Accept", "application/json")
-                .GET()
-                .build();
-
         try {
-            LOGGER.info("Sending request to OSRM: " + apiUrl);
-            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            int statusCode = response.statusCode();
-
-            // Handle rate limiting specifically for API reliability
-            if (statusCode == 429) {
-                throw new OsrmServiceException("OSRM rate limit reached.");
+            // OSRM expects coordinates in {longitude},{latitude} format.
+            // Using Locale.US to ensure decimals use dots (.), not commas (,), regardless of system language.
+            String coords = String.format(Locale.US, "%f,%f;%f,%f", 
+                                          userLon, userLat, itemLon, itemLat);
+            
+            String targetUrl = OSRM_URL + coords + "?overview=false";
+            
+            URL url = new URL(targetUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Accept", "application/json");
+            
+            // Short timeouts so the app doesn't hang if the Docker service is down
+            connection.setConnectTimeout(2000); 
+            connection.setReadTimeout(2000);    
+            
+            int responseCode = connection.getResponseCode();
+            if (responseCode != 200) {
+                throw new OsrmServiceException("OSRM server returned an error code: " + responseCode);
             }
 
-            if (statusCode == 200) {
-                // Parse the response tree to extract distance and duration from the first route
-                JsonNode root = mapper.readTree(response.body());
-                JsonNode routes = root.path("routes");
+            // Read the JSON response from the stream
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder rawJson = new StringBuilder();
+            String inputLine;
+            while ((inputLine = reader.readLine()) != null) {
+                rawJson.append(inputLine);
+            }
+            reader.close();
 
-                if (routes.isArray() && !routes.isEmpty()) {
-                    JsonNode route = routes.get(0);
-                    double dist = route.path("distance").asDouble();
-                    double dur = route.path("duration").asDouble();
-                    return new DistanceResult(dist, dur);
-                }
+            // Use Jackson to parse the specific bits we need from the OSRM response
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(rawJson.toString());
+            
+            JsonNode routes = root.path("routes");
+            if (routes.isArray() && routes.size() > 0) {
+                JsonNode firstRoute = routes.get(0);
+                double distance = firstRoute.path("distance").asDouble(); // distance in metres
+                double duration = firstRoute.path("duration").asDouble(); // duration in seconds
                 
-                // Return 0 if no valid route could be calculated by the engine
-                return new DistanceResult(0.0, 0.0);
+                return new DistanceResult(distance, duration);
             } else {
-                throw new OsrmServiceException("OSRM service returned error code: " + statusCode);
+                throw new OsrmException("No valid route found in the JSON response", OsrmException.ErrorType.INVALID_RESPONSE);
             }
 
-        } catch (OsrmException e) {
-            throw e; // Pass specific exceptions up
+        } catch (java.net.SocketTimeoutException e) {
+            throw new OsrmException("OSRM connection timed out", OsrmException.ErrorType.TIMEOUT, e);
+        } catch (OsrmServiceException e) {
+            throw e; 
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Internal error during OSRM communication", e);
-            throw new OsrmException("Orchestrator failed to process distance", 
-                                    OsrmException.ErrorType.UNEXPECTED_ERROR, e);
+            // General catch-all for IO issues or parsing failures
+            throw new OsrmServiceException("Could not connect to OSRM service: " + e.getMessage(), e);
         }
-    }
-
-    private boolean isValidCoordinate(double lat, double lon) {
-        return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
     }
 }

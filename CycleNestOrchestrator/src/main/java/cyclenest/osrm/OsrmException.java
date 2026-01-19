@@ -1,30 +1,33 @@
 package cyclenest.osrm;
 
 /**
- * Enhanced Exception for OSRM operations.
- * Includes error codes to differentiate between client and server issues (QoS).
+ * OsrmException - Custom exception for handling OSRM-specific failures.
+ * This helps us distinguish between a network timeout and a bad response.
  */
 public class OsrmException extends Exception {
-
+    
+    // Categorising different ways the routing service might fail
     public enum ErrorType {
-        INVALID_COORDINATES,
         SERVICE_UNAVAILABLE,
-        UNEXPECTED_ERROR
+        INVALID_RESPONSE,
+        TIMEOUT
     }
 
-    private final ErrorType errorType;
+    private final ErrorType type;
 
-    public OsrmException(String message, ErrorType errorType) {
+    // Standard constructor for basic error messages
+    public OsrmException(String message, ErrorType type) {
         super(message);
-        this.errorType = errorType;
+        this.type = type;
     }
 
-    public OsrmException(String message, ErrorType errorType, Throwable cause) {
+    // Constructor that keeps the 'cause' (stack trace) for easier debugging
+    public OsrmException(String message, ErrorType type, Throwable cause) {
         super(message, cause);
-        this.errorType = errorType;
+        this.type = type;
     }
 
-    public ErrorType getErrorType() {
-        return errorType;
+    public ErrorType getType() {
+        return type;
     }
 }

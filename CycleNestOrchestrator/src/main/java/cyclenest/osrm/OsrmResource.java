@@ -2,7 +2,6 @@ package cyclenest.osrm;
 
 import cyclenest.model.Item;
 import cyclenest.repository.ItemRepository;
-import cyclenest.util.DistanceHelper;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.QueryParam;
@@ -14,11 +13,16 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * OsrmResource - The main orchestrator for distance-based logic.
+ * This class handles finding the nearest bike by combining local math 
+ * with the external OSRM routing engine.
+ */
 @Path("/distance")
 public class OsrmResource {
 
     private static final Logger LOGGER = Logger.getLogger(OsrmResource.class.getName());
-    private final OsrmClient client = new OsrmClient();
+    private final OsrmClient osrmClient = new OsrmClient();
     private final ItemRepository itemRepo = new ItemRepository(); 
 
     @GET
@@ -27,53 +31,65 @@ public class OsrmResource {
             @QueryParam("lat") Double userLat, 
             @QueryParam("lon") Double userLon) {
 
-        // 1. Validation
+        // Basic validation to ensure the user actually sent coordinates
         if (userLat == null || userLon == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"error\":\"Please provide your current lat and lon.\"}")
+                    .entity("{\"error\":\"Please provide your current latitude and longitude.\"}")
                     .build();
         }
 
-       try {
-            // 2. Load a paginated sample from Atlas (Optimized for Part C)
-            // Added 1 (page) and 10 (pageSize) to match new ItemRepository signature
-            List<Item> allItems = itemRepo.searchItems(null, null, null, null, null, null, null, null, 1, 10);
+        try {
+            // Fetch all items from MongoDB Atlas
+            List<Item> allItems = itemRepo.searchItems(null, null, null, null, null, null, null, null);
 
             if (allItems == null || allItems.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)
-                        .entity("{\"error\":\"No bikes found in database to calculate distance.\"}")
+                        .entity("{\"error\":\"No bikes found in the database.\"}")
                         .build();
             }
 
-            // 3. KNN FILTERING: Local math to prevent 429 Errors
+            /* * Efficiency Optimisation:
+             * We use the Haversine formula (local math) to find the closest bike first.
+             * This prevents us from making 100s of expensive external OSRM API calls.
+             */
             for (Item item : allItems) {
-                double roughDist = DistanceHelper.calculateHaversine(
+                if (item.getLatitude() == 0 || item.getLongitude() == 0) continue;
+
+                double roughDist = calculateHaversine(
                     userLat, userLon, item.getLatitude(), item.getLongitude());
                 item.setRoughDistance(roughDist);
             }
             
-            // 4. SORT AND LIMIT: Keep only the 3 closest items locally
-            List<Item> top3Bikes = allItems.stream()
+            // Sort bikes by "as the crow flies" distance and pick the top candidate
+            List<Item> sortedBikes = allItems.stream()
+                    .filter(i -> i.getRoughDistance() > 0)
                     .sorted(Comparator.comparingDouble(Item::getRoughDistance))
-                    .limit(3)
                     .collect(Collectors.toList());
 
-            // 5. TARGETED ORCHESTRATION: Only call OSRM for the absolute closest bike
-            Item closestBike = top3Bikes.get(0);
-            DistanceResult finalResult = client.calculateDistance(
+            if (sortedBikes.isEmpty()) {
+                 return Response.status(Response.Status.NOT_FOUND)
+                        .entity("{\"error\":\"No items with valid coordinates found.\"}")
+                        .build();
+            }
+
+            // Now that we have the best candidate, we use OSRM for precise road-routing distance
+            Item closestBike = sortedBikes.get(0);
+            
+            DistanceResult finalResult = osrmClient.getRoute(
                 userLat, userLon, closestBike.getLatitude(), closestBike.getLongitude());
 
             return Response.ok(finalResult).build();
 
-        } catch (OsrmException e) {
-            LOGGER.warning("OSRM Service issue: " + e.getMessage());
-            return Response.status(Response.Status.BAD_GATEWAY)
-                    .entity("{\"error\":\"External routing service failed (Rate Limit or Timeout)\"}")
+        } catch (OsrmServiceException e) {
+            // Error handling for when the Docker OSRM service is down or unreachable
+            LOGGER.warning("OSRM Service connection failure: " + e.getMessage());
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                    .entity("{\"error\":\"Routing engine is offline. " + e.getMessage() + "\"}")
                     .build();
         } catch (Exception e) {
-            LOGGER.severe("Unexpected Orchestrator error: " + e.getMessage());
+            LOGGER.severe("Orchestrator encountered an unexpected error: " + e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("{\"error\":\"Internal error during orchestration\"}")
+                    .entity("{\"error\":\"An internal error occurred during orchestration\"}")
                     .build();
         }
     }
@@ -85,11 +101,25 @@ public class OsrmResource {
             @QueryParam("lat1") Double lat1, @QueryParam("lon1") Double lon1,
             @QueryParam("lat2") Double lat2, @QueryParam("lon2") Double lon2) {
         try {
-            // This bypasses the Repository/Database entirely for clean OSRM testing
-            DistanceResult result = client.calculateDistance(lat1, lon1, lat2, lon2);
+            DistanceResult result = osrmClient.getRoute(lat1, lon1, lat2, lon2);
             return Response.ok(result).build();
         } catch (Exception e) {
-            return Response.status(500).entity(e.getMessage()).build();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
         }
+    }
+
+    /**
+     * Haversine formula - calculates "as the crow flies" distance in metres.
+     * Used for the initial KNN (K-Nearest Neighbour) filter.
+     */
+    private double calculateHaversine(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // Earth radius in km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c * 1000; // Convert km to metres
     }
 }
