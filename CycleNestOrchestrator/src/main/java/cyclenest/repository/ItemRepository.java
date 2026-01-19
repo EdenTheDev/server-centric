@@ -75,10 +75,13 @@ public class ItemRepository {
         }
         return item;
     }
-
-    /**
-     * searchItems - Core search logic with pagination.
-     */
+    /* 
+    * Implemented pagination to address scalability issues i found when using JMeter testing
+    * When i simulated large payloads to mimick Big data, the systems latency increased massively.
+    * By using skip() and limit(), we only fetch in batches of 50 at a time, this drastically
+    * reduces the memory load and makes the orchestrator much more robust to stress.
+    */
+    
     public List<Item> searchItems(String itemId, String ownerId, String name, String category, 
                                   Boolean available, Double maxRate, String location, String condition,
                                   int page, int pageSize) {
