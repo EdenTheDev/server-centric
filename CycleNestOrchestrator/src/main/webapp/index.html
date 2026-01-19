@@ -5,44 +5,79 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CycleNest Dev Portal</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; max-width: 1100px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; }
-        h1 { color: #1a73e8; margin-top: 0; }
+        h1, h2, h3 { color: #1a73e8; margin-top: 0; }
         .status-badge { background: #34a853; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; vertical-align: middle; }
-        .endpoint { font-family: 'Consolas', monospace; color: #d93025; background: #f8f9fa; padding: 2px 5px; }
-        .method { font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; }
+        .endpoint { font-family: 'Consolas', monospace; color: #d93025; background: #f8f9fa; padding: 2px 5px; font-size: 0.9em; font-weight: bold; }
+        .method { font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; border: 1px solid #ddd; }
         .get { background: #e8f0fe; color: #1967d2; }
         .post { background: #e6f4ea; color: #137333; }
         .put { background: #fef7e0; color: #b06000; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { text-align: left; padding: 15px; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; }
-        .btn-test { text-decoration: none; color: white; background: #1a73e8; padding: 6px 12px; border-radius: 4px; font-size: 0.9em; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+        th { background: #f8f9fa; color: #555; font-size: 0.85em; text-transform: uppercase; }
+        .btn-test { text-decoration: none; color: white; background: #1a73e8; padding: 8px 16px; border-radius: 4px; font-size: 0.85em; border: none; cursor: pointer; display: inline-block; }
         .btn-test:hover { background: #1557b0; }
-        .req-tag { font-size: 0.75em; color: #70757a; font-weight: bold; display: block; }
+        .req-tag { font-size: 0.75em; color: #70757a; font-weight: bold; display: block; margin-bottom: 3px; }
+        .json-payload { background: #2d2d2d; color: #f8f8f2; padding: 10px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 0.85em; margin-top: 10px; border-left: 4px solid #137333; }
+        
+        /* Interactive Section */
+        .tester-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; }
+        .input-group label { font-size: 0.8em; font-weight: bold; color: #555; margin-bottom: 5px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        #result-area { background: #202124; color: #00e676; padding: 15px; border-radius: 8px; font-family: 'Consolas', monospace; display: none; margin-top: 15px; white-space: pre-wrap; border-left: 5px solid #34a853; }
+
+        /* Part Color Coding */
+        .part-a { border-left: 6px solid #1a73e8; }
+        .part-b { border-left: 6px solid #34a853; }
+        .part-cd { border-left: 6px solid #fbbc04; background: #fffcf0; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h1>CycleNest Orchestrator <span class="status-badge">Online</span></h1>
-        <p>This dashboard serves as the <strong>Proof of Implementation</strong> for Project Parts A & B.</p>
+        <p>Centralized testing portal for <strong>Project Parts A, B, C, and D</strong>. Comprehensive stress-testing and architecture documentation is available in the <code>README.md</code>.</p>
         <a href="api/status" class="btn-test" style="background: #5f6368;">System Health Check</a>
     </div>
 
-    <div class="card">
-        <h2>Orchestrator Endpoints (Part A.1 & A.2)</h2>
+    <div class="card part-b">
+        <h3>Part B: Dynamic Orchestration (Live Tester)</h3>
+        <p>Demonstrating real-time bridging between <strong>Cloud Persistence (MongoDB)</strong> and <strong>Routing Engine (OSRM)</strong>.</p>
+        
+        <div class="tester-grid">
+            <div class="input-group">
+                <label>Item ID (from DB)</label>
+                <input type="text" id="itemId" value="i00001">
+            </div>
+            <div class="input-group">
+                <label>User Latitude</label>
+                <input type="number" id="lat" value="52.9548" step="0.0001">
+            </div>
+            <div class="input-group">
+                <label>User Longitude</label>
+                <input type="number" id="lon" value="-1.1581" step="0.0001">
+            </div>
+            <button onclick="runTest()" class="btn-test" style="background: #34a853; padding: 10px 20px;">Calculate Distance</button>
+        </div>
+        <div id="result-area"></div>
+    </div>
+
+    <div class="card part-a">
+        <h3>Part A: Cloud Discovery & State Management</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Requirement</th>
+                    <th>Module</th>
                     <th>Method</th>
-                    <th>Endpoint & Test Links</th>
+                    <th>Endpoint & Testing Instructions</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td><span class="req-tag">A.1: View Items</span>Fetch Large Dataset</td>
+                    <td><span class="req-tag">A.1 & A.2: Discovery</span>Browse Catalog</td>
                     <td><span class="method get">GET</span></td>
                     <td>
                         <span class="endpoint">/api/items/search</span><br><br>
@@ -50,54 +85,73 @@
                     </td>
                 </tr>
                 <tr>
-                    <td><span class="req-tag">A.1: Filtering</span>Filter: Location</td>
+                    <td><span class="req-tag">A.1: Filtering</span>Spatial & Category</td>
                     <td><span class="method get">GET</span></td>
                     <td>
-                        <span class="endpoint">/api/items/search?location=Sheffield</span><br><br>
-                        <a href="api/items/search?location=Sheffield" target="_blank" class="btn-test">Items in Sheffield</a>
+                        <span class="endpoint">/api/items/search?location=Sheffield</span><br>
+                        <a href="api/items/search?location=Sheffield" target="_blank" class="btn-test" style="margin-top: 5px;">Filter: Sheffield</a>
+                        <a href="api/items/search?category=Fitness" target="_blank" class="btn-test" style="margin-top: 5px; background:#5f6368;">Filter: Fitness</a>
                     </td>
                 </tr>
                 <tr>
-                    <td><span class="req-tag">A.1: Filtering</span>Filter: Daily Rate</td>
-                    <td><span class="method get">GET</span></td>
+                    <td><span class="req-tag">A.1: State Management</span>Update Item Status</td>
+                    <td><span class="method post">POST</span> / <span class="method put">PUT</span></td>
                     <td>
-                        <span class="endpoint">/api/items/search?maxRate=20</span><br><br>
-                        <a href="api/items/search?maxRate=20" target="_blank" class="btn-test">Items Under &pound;20</a>
-                    </td>
-                </tr>
-                <tr>
-                    <td><span class="req-tag">Extra: Orchestration</span>OSRM Calculation</td>
-                    <td><span class="method get">GET</span></td>
-                    <td>
-                        <span class="endpoint">/api/distance</span><br><br>
-                        <a href="api/distance?lat=53.38&lon=-1.47" target="_blank" class="btn-test">Test OSRM Routing</a>
-                    </td>
-                </tr>
-                <tr>
-                    <td><span class="req-tag">A.1: State Management</span>Request Item (Pending)</td>
-                    <td><span class="method post">POST</span></td>
-                    <td>
-                        <span class="endpoint">/api/items/request</span><br>
-                        <small>Creates "pending" status in MongoDB.</small>
-                    </td>
-                </tr>
-                <tr>
-                    <td><span class="req-tag">A.1: State Management</span>Cancel Request</td>
-                    <td><span class="method put">PUT</span></td>
-                    <td>
-                        <span class="endpoint">/api/items/cancel/{id}</span><br>
-                        <small>Updates status to "cancelled".</small>
+                        <span class="endpoint">/api/items/request</span>
+                        <div class="json-payload">
+                            // POST Body for Postman/cURL<br>
+                            { "itemId": "i00001", "userId": "user_eden" }
+                        </div>
+                        <small style="display:block; margin-top:8px;">Used for updating MongoDB document status to <code>pending</code>.</small>
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <div class="card" style="background: #e8f0fe;">
-        <h3>Part A.2 Cloud Storage Verification</h3>
-        <p>All data is persisted in <strong>MongoDB Atlas</strong>. Ensure your database collection matches the fields:</p>
-        <code>Item ID, Owner ID, Name, Category, Location, Daily Rate, Availability, Condition, Description.</code>
+    <div class="card part-cd">
+        <h3>Parts C & D: Performance & Infrastructure Verification</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div>
+                <h4>Part C: JMeter Stress Testing</h4>
+                <p>Performance metrics verified through heavy-load simulation:</p>
+                <ul>
+                    <li><strong>MongoDB Indexing:</strong> Benchmarked query latency for location-based filtering.</li>
+                    <li><strong>OSRM Throughput:</strong> Tested bridging speed between Java Orchestrator and OSRM Microservice.</li>
+                    <li><strong>Concurrency:</strong> Verified thread-safe state management under load.</li>
+                </ul>
+            </div>
+            <div>
+                <h4>Part D: Docker Deployment</h4>
+                <p>Deployed via isolated multi-container architecture:</p>
+                <ul>
+                    <li><strong>Network:</strong> Private <code>cyclenest-net</code> bridge.</li>
+                    <li><strong>Documentation:</strong> See <code>README.md</code> for logs and build steps.</li>
+                </ul>
+            </div>
+        </div>
     </div>
 
+    <script>
+        async function runTest() {
+            const id = document.getElementById('itemId').value;
+            const lat = document.getElementById('lat').value;
+            const lon = document.getElementById('lon').value;
+            const resultArea = document.getElementById('result-area');
+            
+            resultArea.style.display = "block";
+            resultArea.style.color = "#00e676";
+            resultArea.innerText = "// Orchestrating data from MongoDB Atlas & OSRM Engine...";
+
+            try {
+                const response = await fetch(`api/items/${id}/distance?userLat=${lat}&userLon=${lon}`);
+                const data = await response.json();
+                resultArea.innerText = "// Response Received:\n" + JSON.stringify(data, null, 4);
+            } catch (err) {
+                resultArea.innerText = "Error: Ensure the OSRM container is running on the local network.";
+                resultArea.style.color = "#ff5252";
+            }
+        }
+    </script>
 </body>
 </html>
