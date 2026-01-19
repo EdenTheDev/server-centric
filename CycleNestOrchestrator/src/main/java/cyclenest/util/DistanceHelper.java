@@ -1,26 +1,31 @@
 package cyclenest.util;
 
 /**
- * Helper class for distance calculations.
+ * DistanceHelper - Static utilities for geographic calculations.
+ * I moved this logic here to keep the Resource classes clean and to 
+ * allow for easy reuse across the application.
  */
 public class DistanceHelper {
 
     /**
-     * Calculates the "as-the-crow-flies" distance between two points using the Haversine formula.
-     * This local math avoids hitting external API rate limits for large datasets.
+     * calculateHaversine - Calculates the straight-line distance between two points.
+     * This local calculation is vital for Part C performance; it allows us to 
+     * filter thousands of items locally before ever calling the OSRM API.
      */
     public static double calculateHaversine(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371; // Radius of the earth in km
+        // Radius of the earth in kilometres
+        final int R = 6371; 
         
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
         
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         
-        return R * c; // Returns distance in kilometers
+        // Returns the final distance in kilometres
+        return R * c; 
     }
 }

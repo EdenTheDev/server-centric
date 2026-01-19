@@ -13,6 +13,10 @@ import org.bson.conversions.Bson;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * ItemRepository - Handles all direct communication with MongoDB Atlas.
+ * Implemented with a Singleton pattern to manage connection overhead.
+ */
 public class ItemRepository {
 
     private static final String CONNECTION_STRING = "mongodb+srv://n1085361:CycleNest123@cyclenestcluster.9ibdwx0.mongodb.net/?appName=CycleNestCluster";
@@ -20,7 +24,6 @@ public class ItemRepository {
     private static final String ITEM_COLLECTION = "items";
     private static final String REQUEST_COLLECTION = "requests";
 
-    // SINGLETON FIX: One client, shared by all requests
     private static MongoClient mongoClient = null;
     private static MongoDatabase database = null;
 
@@ -42,7 +45,39 @@ public class ItemRepository {
     }
 
     /**
-     * OPTIMIZED SEARCH: Added Page and PageSize for Pagination (Part C)
+     * addItem - Inserts a new item into the MongoDB collection.
+     * Required by ItemResource to resolve compilation errors.
+     */
+    public void addItem(Item item) {
+        Document doc = new Document("item_id", item.getItem_id())
+                .append("owner_id", item.getOwner_id())
+                .append("name", item.getName())
+                .append("category", item.getCategory())
+                .append("location", item.getLocation())
+                .append("daily_rate", item.getDaily_rate())
+                .append("available", item.isAvailable())
+                .append("condition", item.getCondition())
+                .append("description", item.getDescription())
+                .append("latitude", item.getLatitude())
+                .append("longitude", item.getLongitude());
+        
+        getItemCollection().insertOne(doc);
+    }
+
+    /**
+     * removeItem - Deletes an item from MongoDB.
+     * Required by ItemResource to resolve compilation errors.
+     */
+    public Item removeItem(String id) {
+        Item item = getItemById(id);
+        if (item != null) {
+            getItemCollection().deleteOne(Filters.eq("item_id", id));
+        }
+        return item;
+    }
+
+    /**
+     * searchItems - Core search logic with pagination.
      */
     public List<Item> searchItems(String itemId, String ownerId, String name, String category, 
                                   Boolean available, Double maxRate, String location, String condition,
@@ -65,7 +100,6 @@ public class ItemRepository {
             
         if (maxRate != null) query.append("daily_rate", new Document("$lte", maxRate));
 
-        // PAGINATION EXECUTION: skip() and limit()
         int skipValue = (page - 1) * pageSize;
 
         for (Document doc : getItemCollection().find(query)
@@ -76,7 +110,6 @@ public class ItemRepository {
         return itemList;
     }
 
-    // Overloaded method to maintain compatibility with existing code if needed
     public List<Item> searchItems(String itemId, String ownerId, String name, String category, 
                                   Boolean available, Double maxRate, String location, String condition) {
         return searchItems(itemId, ownerId, name, category, available, maxRate, location, condition, 1, 50);
@@ -84,7 +117,6 @@ public class ItemRepository {
 
     public List<Item> getAllItems() {
         List<Item> itemList = new ArrayList<>();
-        // Default to first 50 items
         for (Document doc : getItemCollection().find().limit(50)) {
             itemList.add(mapDocumentToItem(doc));
         }
@@ -114,25 +146,6 @@ public class ItemRepository {
         } catch (NumberFormatException e) {
             return false;
         }
-    }
-
-    public void addItem(Item item) {
-        Document doc = new Document("item_id", item.getItem_id())
-                .append("name", item.getName())
-                .append("category", item.getCategory())
-                .append("daily_rate", item.getDaily_rate())
-                .append("available", item.isAvailable())
-                .append("latitude", item.getLatitude())
-                .append("longitude", item.getLongitude());
-        getItemCollection().insertOne(doc);
-    }
-
-    public Item removeItem(String id) {
-        Item item = getItemById(id);
-        if (item != null) {
-            getItemCollection().deleteOne(Filters.eq("item_id", id));
-        }
-        return item;
     }
 
     private Item mapDocumentToItem(Document doc) {
